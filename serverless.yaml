@@ -1,0 +1,71 @@
+service: some-api
+useDotenv: true
+
+plugins:
+  - serverless-bundle
+  - serverless-offline
+  - serverless-plugin-warmup
+
+package:
+  individually: true
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-west-1
+  timeout: 30
+  lambdaHashingVersion: 20201221
+  tracing:
+    apiGateway: true
+    lambda: true
+  apiGateway:
+    shouldStartNameWithService: true
+
+custom:
+  serverless-offline:
+    httpPort: 5000
+  bundle:
+    packager: yarn
+    linting: false
+    fixPackages:
+      - "formidable@1.x"
+    copyFiles:
+      - from: './*.secret.json'
+        to: './'
+  warmup:
+    day:
+      enabled: false
+      prewarmup: true
+      events:
+        - schedule: cron(0/5 8-17 ? * MON-FRI *)
+      concurrency: 3
+    night:
+      enabled: false
+      prewarmup: true
+      events:
+        - schedule: cron(0/5 0-7 ? * MON-FRI *)
+        - schedule: cron(0/5 23 ? * MON-FRI *)
+        - schedule: cron(0/5 * ? * SAT-SUN *)
+      concurrency: 1
+
+functions:
+  app:
+    handler: app.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+    warmup:
+      day:
+        enabled:
+          - staging
+          - dev
+      night:
+        enabled:
+          - staging
+          - dev
